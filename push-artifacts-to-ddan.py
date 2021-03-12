@@ -1,13 +1,20 @@
 #!/usr/bin/python3
 import os
 import os.path
+import json
+import shutil
 import subprocess
 import boto3
 import logging
 import time
 from logging.handlers import TimedRotatingFileHandler
 
-ddanInDirFolder = '~/ddan/work/indir/'
+f = open('config.json', 'r+')
+configObj = json.loads(f.read())
+f.close()
+
+ddanToolsFolder = configObj["ddanToolsFolder"]
+ddanInDirfolder = ddanToolsFolder + "/work/indir"
 
 def create_timed_rotating_log(path):
     logger = logging.getLogger("Rotating Log")
@@ -21,16 +28,25 @@ def create_timed_rotating_log(path):
     return logger
 
 def clearDdanInDir(logger):
-    if os.path.exists(ddanInDirFolder):
-        logger.info("Cleaning DDAN indir folder (" + ddanInDirFolder + ")...")
-        os.rmdir(ddanInDirFolder)
+    if os.path.exists(ddanInDirfolder):
+        logger.info("Cleaning DDAN indir folder (" + ddanInDirfolder + ")...")
+        for filename in os.listdir(ddanInDirfolder):
+            filePath = os.path.join(ddanInDirfolder, filename)
+            try:
+                if os.path.isfile(filePath) or os.path.islink(filePath):
+                    os.unlink(filePath)
+                elif os.path.isdir(filePath):
+                    shutil.rmtree(filePath)
+            except Exception as e:
+                print('Failed to delete %s. Reason %s' % (filePath, e))
+
 
 def downloadS3QuarantineBucketFiles(s3ObjectKey):
     s3Resource = boto3.resource('s3')
     s3Resource.meta.client.download_file(
         Bucket=str(os.environ.get('S3_QUARANTINE_BUCKET_NAME')),
         Key=s3ObjectKey,
-        Filename= ddanInDirFolder + s3ObjectKey
+        Filename= ddanToolsFolder + "/" + s3ObjectKey
     )
 
 def listAllS3Objects(logger):
@@ -44,7 +60,7 @@ def listAllS3Objects(logger):
 
 def submitFilesToDDAN(logger):
     process = subprocess.Popen(
-        ['~/ddan/dtascli', '-u'],
+        [ddanInDirfolder + "/dtascli", "-u"],
         stdout=subprocess.PIPE,
         universal_newlines=True
     )
