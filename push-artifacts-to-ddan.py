@@ -14,7 +14,9 @@ configObj = json.loads(f.read())
 f.close()
 
 ddanToolsFolder = configObj["ddanToolsFolder"]
-ddanInDirfolder = ddanToolsFolder + "/work/indir"
+if ddanToolsFolder != "" and ddanToolsFolder[-1:] != "/":
+    ddanToolsFolder += "/"
+ddanInDirfolder = ddanToolsFolder + "work/indir"
 
 def create_timed_rotating_log(path):
     logger = logging.getLogger("Rotating Log")
@@ -46,8 +48,9 @@ def downloadS3QuarantineBucketFiles(s3ObjectKey):
     s3Resource.meta.client.download_file(
         Bucket=str(os.environ.get('S3_QUARANTINE_BUCKET_NAME')),
         Key=s3ObjectKey,
-        Filename= ddanToolsFolder + "/" + s3ObjectKey
+        Filename= ddanToolsFolder + s3ObjectKey
     )
+    
 
 def listAllS3Objects(logger):
     s3Client = boto3.client('s3')
